@@ -59,7 +59,8 @@ create table paciente (
   fecha_nac DATE not null,
   sexo SEXO not null,
   
-  primary key (dni)
+  primary key (dni),
+	CHECK (fecha_nac <= CURRENT_DATE)
 );
 
 create table medico (
@@ -70,12 +71,13 @@ create table medico (
   cuil_cuit BIGINT unique not null,
   fecha_ingreso DATE not null,
   
-  primary key (matricula)
+  primary key (matricula),
+  CHECK (fecha_ingreso <= CURRENT_DATE)
 );
 
 create table sector (
 	id_sector SERIAL,
-  tipo TIPO_SECTOR not null,
+  tipo TIPO_SECTOR unique not null,
   
   primary key (id_sector)
 );
@@ -104,7 +106,8 @@ create table ronda (
   dia DIA_SEMANA not null,
   turno TURNO not null,
   
-  primary key (id_ronda)
+  primary key (id_ronda),
+  unique (dia,turno)
 );
 
 create table incluye (
@@ -124,7 +127,8 @@ create table recorrido (
   
   primary key (id_recorrido),
   foreign key (id_ronda) references ronda(id_ronda),
-  foreign key (matricula) references medico(matricula)
+  foreign key (matricula) references medico(matricula),
+  unique (matricula,fecha)
 );
 
 create table internacion (
@@ -207,7 +211,8 @@ create table periodo_vacaciones (
   fecha_inicio DATE not null,
   fecha_fin DATE not null,
   
-  primary key (id_periodo_vacaciones)
+  primary key (id_periodo_vacaciones),
+  unique (fecha_inicio,fecha_fin);
 );
 
 create table tiene (

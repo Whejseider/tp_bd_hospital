@@ -397,7 +397,7 @@ DROP TRIGGER IF EXISTS trig_borrar_cama ON CAMA;
 CREATE TRIGGER trig_borrar_cama
 BEFORE DELETE ON cama
 FOR EACH ROW EXECUTE FUNCTION fn_borrar_cama();
-
+/*
 -- =========================================================== --
 -- VALIDAR QUE UN PACIENTE NO TENGA VARIAS INTERNACIONES A LA VEZ           --
 -- =========================================================== --
@@ -441,7 +441,7 @@ CREATE TRIGGER trig_unica_internacion_activa
 BEFORE INSERT OR UPDATE ON internacion
 FOR EACH ROW
 EXECUTE FUNCTION validar_unica_internacion_activa();
-
+*/
 -- =========================================================== --
 -- VALIDAR QUE UN MEDICO NO TENGA FECHAS DE VACACIONES SUPERPUESTAS           --
 -- =========================================================== --
@@ -550,3 +550,39 @@ BEFORE INSERT OR UPDATE ON recorrido
 FOR EACH ROW
 EXECUTE FUNCTION validar_dia_recorrido();
 
+-- =========================================================== --
+-- VALIDAR QUE LAS FECHAS DE INTERNACIONES ACTIVAS O PASADAS DE UN PACIENTE
+-- NO SE SUPERPONGAN--
+-- =========================================================== --
+
+CREATE OR REPLACE FUNCTION validar_superposicion_internaciones()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_existe INT;
+BEGIN
+    -- Si la nueva internación no tiene fecha_fin, la consideramos "infinita"
+    -- Idem para las existentes que estén activas.
+    SELECT 1
+    INTO v_existe
+    FROM internacion i
+    WHERE i.dni = NEW.dni
+      -- En UPDATE, ignorar la propia fila
+      AND (TG_OP = 'INSERT' OR i.id_internacion <> NEW.id_internacion)
+      -- Condición de solapamiento de intervalos:
+      AND i.fecha_inicio <= COALESCE(NEW.fecha_fin, 'infinity'::date)
+      AND NEW.fecha_inicio <= COALESCE(i.fecha_fin, 'infinity'::date)
+    LIMIT 1;
+
+    IF v_existe IS NOT NULL THEN
+        RAISE EXCEPTION
+          'El paciente con ya tiene una internación que se superpone con el rango dado';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trig_validar_superposicion_internaciones
+BEFORE INSERT OR UPDATE ON internacion
+FOR EACH ROW
+EXECUTE FUNCTION validar_superposicion_internaciones();
